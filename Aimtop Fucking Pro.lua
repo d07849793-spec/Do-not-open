@@ -9,16 +9,15 @@ local Window = Rayfield:CreateWindow({
    ConfigurationSaving = {
       Enabled = false,
    },
-   -- Включена ключевая система Rayfield
    KeySystem = true,
    KeySettings = {
-      Title = "aimtop v2 | pro edition",
-      Subtitle = "Введите ключ доступа",
-      Note = "купи у меня",
+      Title = "aimtop v2 | Key System",
+      Subtitle = "Aimtop Premium Key System",
+      Note = "buy this key",
       FileName = "AimtopKey",
       SaveKey = true,
       GrabKeyFromSite = false,
-      Key = {"the premium key", "give me premium", "67premium67", "premium 52"} -- Список верных ключей
+      Key = {"kupa pro", "the premium"}
    }
 })
 
@@ -53,11 +52,11 @@ local WalkSpeedValue = 16
 local JumpEnabled = false
 local JumpPowerValue = 50
 
--- Переменная для запоминания оригинального взгляда (для Silent Aim)
+-- Переменные для контроля Snap/Silent Aim
 local OriginalCFrame = nil
-local IsAiming = false
+local LockedTarget = nil
 
--- Screen GUI for Mobile On-Screen Buttons
+-- Mobile UI
 local MobileScreenGui = Instance.new("ScreenGui")
 MobileScreenGui.Name = "AimtopMobileUI"
 MobileScreenGui.ResetOnSpawn = false
@@ -70,16 +69,13 @@ else
     MobileScreenGui.Parent = game:GetService("CoreGui")
 end
 
--- Helper for Mobile Draggable Elements
 local function MakeDraggable(guiObject)
     local dragging, dragInput, dragStart, startPos
-
     guiObject.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             dragStart = input.Position
             startPos = guiObject.Position
-
             input.Changed:Connect(function()
                 if input.UserInputState == Enum.UserInputState.End then
                     dragging = false
@@ -87,13 +83,11 @@ local function MakeDraggable(guiObject)
             end)
         end
     end)
-
     guiObject.InputChanged:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
             dragInput = input
         end
     end)
-
     UserInputService.InputChanged:Connect(function(input)
         if input == dragInput and dragging then
             local delta = input.Position - dragStart
@@ -102,7 +96,6 @@ local function MakeDraggable(guiObject)
     end)
 end
 
--- Create Rayfield-Styled Floating Button
 local function CreateRayfieldButton(name, text, defaultPos)
     local frame = Instance.new("TextButton")
     frame.Name = name
@@ -145,7 +138,6 @@ local function CreateRayfieldButton(name, text, defaultPos)
     indCorner.Parent = indicator
 
     MakeDraggable(frame)
-
     return frame, indicator, stroke
 end
 
@@ -170,7 +162,6 @@ FOVCircle.Radius = AimFOV
 FOVCircle.Filled = false
 FOVCircle.Visible = false
 
--- ESP Highlights Container
 local Highlights = {}
 
 -- Tabs
@@ -184,15 +175,25 @@ local AimToggle = MainTab:CreateToggle({
    CurrentValue = false,
    Callback = function(Value)
       AimbotEnabled = Value
+      if not Value and OriginalCFrame then
+         Camera.CFrame = OriginalCFrame
+         OriginalCFrame = nil
+         LockedTarget = nil
+      end
       UpdateButtonState(AimBtnFrame, AimBtnInd, AimBtnStroke, Value)
    end,
 })
 
 MainTab:CreateToggle({
-   Name = "Enable Silent Aim (Авто-возврат взгляда)",
+   Name = "Silent/Snap Aim (Авто-возврат взгляда)",
    CurrentValue = false,
    Callback = function(Value)
       SilentAimEnabled = Value
+      if not Value and OriginalCFrame then
+         Camera.CFrame = OriginalCFrame
+         OriginalCFrame = nil
+         LockedTarget = nil
+      end
    end,
 })
 
@@ -276,7 +277,6 @@ MainTab:CreateSlider({
    end,
 })
 
--- On-Screen Button Clicks
 AimBtnFrame.MouseButton1Click:Connect(function()
    AimToggle:Set(not AimbotEnabled)
 end)
@@ -393,27 +393,22 @@ MovementTab:CreateSlider({
 
 -- ================= LOGIC & LOOPS =================
 
--- Проверка видимости за стеной
 local function IsVisible(targetPart)
    if not WallCheck then return true end
-   
    local origin = Camera.CFrame.Position
    local destination = targetPart.Position
    local raycastParams = RaycastParams.new()
-   
    raycastParams.FilterType = RaycastFilterType.Exclude
    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
    raycastParams.IgnoreWater = true
    
    local result = workspace:Raycast(origin, destination - origin, raycastParams)
-   
    if result then
       return result.Instance:IsDescendantOf(targetPart.Parent)
    end
    return true
 end
 
--- Проверка валидности цели (Игрок или Бот)
 local function IsValidTarget(model)
    if not model or not model:IsA("Model") or model == LocalPlayer.Character then return false end
 
@@ -438,7 +433,6 @@ local function IsValidTarget(model)
    return true, targetPart
 end
 
--- Поиск ближайшей цели (Игрока или Бота) по центру экрана
 local function GetClosestTarget()
    local closestTargetPart = nil
    local shortestDistance = AimFOV
@@ -488,44 +482,53 @@ RunService.RenderStepped:Connect(function()
    local hue = (tick() % 5) / 5
    local rainbowColor = Color3.fromHSV(hue, 1, 1)
 
-   -- Rainbow для FOV
    if FovRainbow then
       FOVCircle.Color = rainbowColor
    else
       FOVCircle.Color = FovColor
    end
 
-   -- Центрирование круга FOV
    FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
 
-   -- Aimbot & Silent Aim Логика
+   -- Логика Snap / Silent Aim
    if AimbotEnabled then
       local targetPart = GetClosestTarget()
       
       if targetPart then
-         -- Запоминаем исходное положение камеры перед поворотом
-         if SilentAimEnabled and not IsAiming then
-            OriginalCFrame = Camera.CFrame
-            IsAiming = true
-         end
-
-         local targetCFrame = CFrame.new(Camera.CFrame.Position, targetPart.Position)
-         local currentSmoothness = (NoSmoothness or SilentAimEnabled) and 1 or Smoothness
-         Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, currentSmoothness)
-      else
-         -- Возвращаем взгляд назад, если цель убита или ушла из FOV
-         if SilentAimEnabled and IsAiming then
-            if OriginalCFrame then
-               Camera.CFrame = OriginalCFrame
+         -- Проверяем, жив ли текущий target
+         local parentModel = targetPart.Parent
+         local hum = parentModel and parentModel:FindFirstChildOfClass("Humanoid")
+         
+         if hum and hum.Health > 0 then
+            -- Если только захватили цель при Silent Aim, запоминаем положение
+            if SilentAimEnabled and not LockedTarget then
+               OriginalCFrame = Camera.CFrame
+               LockedTarget = targetPart
             end
-            IsAiming = false
+
+            local targetCFrame = CFrame.new(Camera.CFrame.Position, targetPart.Position)
+            local currentSmoothness = (NoSmoothness or SilentAimEnabled) and 1 or Smoothness
+            Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, currentSmoothness)
+         else
+            -- Если цель умерла
+            if SilentAimEnabled and OriginalCFrame then
+               Camera.CFrame = OriginalCFrame
+               OriginalCFrame = nil
+               LockedTarget = nil
+            end
+         end
+      else
+         -- Цель вышла из FOV или умерла
+         if SilentAimEnabled and OriginalCFrame then
+            Camera.CFrame = OriginalCFrame
             OriginalCFrame = nil
+            LockedTarget = nil
          end
       end
    else
-      if IsAiming then
-         IsAiming = false
+      if OriginalCFrame then
          OriginalCFrame = nil
+         LockedTarget = nil
       end
    end
 
@@ -548,7 +551,6 @@ RunService.RenderStepped:Connect(function()
          highlight.OutlineColor = activeColor
       end
 
-      -- ESP на игроков
       for _, player in pairs(Players:GetPlayers()) do
          if player ~= LocalPlayer and player.Character then
             local valid = IsValidTarget(player.Character)
@@ -561,7 +563,6 @@ RunService.RenderStepped:Connect(function()
          end
       end
 
-      -- ESP на ботов
       if TargetNPCs then
          for _, obj in pairs(workspace:GetChildren()) do
             if obj:IsA("Model") and not Players:GetPlayerFromCharacter(obj) then
@@ -588,7 +589,6 @@ RunService.RenderStepped:Connect(function()
    end
 end)
 
--- Очистка при удалении игрока
 Players.PlayerRemoving:Connect(function(player)
    if player.Character and Highlights[player.Character] then
       Highlights[player.Character]:Destroy()
