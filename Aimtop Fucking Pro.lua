@@ -9,17 +9,17 @@ local ForceStart = false
 
 if game.PlaceId ~= MM2_PLACE_ID and not ForceStart then
     StarterGui:SetCore("SendNotification", {
-        Title = "Ошибка MM2 Helper",
+        Title = "чел это не мм2",
         Text = "придурок зайди в мм2",
         Duration = 5
     })
     
     local Bindable = Instance.new("BindableFunction")
     Bindable.OnInvoke = function(response)
-        if response == "Посмотреть меню" then
+        if response == "дай посмотреть блять" then
             StarterGui:SetCore("SendNotification", {
                 Title = "MM2 Helper",
-                Text = "пон ладно подожди 10 секунд",
+                Text = "бля чел 10 сек и запустю",
                 Duration = 5
             })
             
@@ -35,35 +35,30 @@ if game.PlaceId ~= MM2_PLACE_ID and not ForceStart then
             end
             
             local TimerLabel = Instance.new("TextLabel")
-            TimerLabel.Size = UDim2.new(0, 300, 0, 60)
+            TimerLabel.Size = UDim2.new(0, 300, 0, 80)
             TimerLabel.Position = UDim2.new(0.5, -150, 0.1, 0)
-            TimerLabel.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-            TimerLabel.BorderColor3 = Color3.fromRGB(255, 50, 50)
-            TimerLabel.BorderSizePixel = 2
+            TimerLabel.BackgroundTransparency = 1 -- Без фона
             TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-            TimerLabel.TextSize = 22
+            TimerLabel.TextSize = 40
             TimerLabel.Font = Enum.Font.SourceSansBold
             TimerLabel.Parent = TimerGui
             
             for i = 10, 1, -1 do
-                TimerLabel.Text = "Запуск через: " .. i .. " сек."
+                TimerLabel.Text = i .. " s"
                 task.wait(1)
             end
             
-            TimerLabel.Text = "Запуск!"
-            task.wait(0.5)
             TimerGui:Destroy()
-            
             ForceStart = true
         end
     end
 
     StarterGui:SetCore("SendNotification", {
-        Title = "Запуск в другой игре",
+        Title = "чел это не мм2",
         Text = "Хочешь посмотреть интерфейс?",
         Duration = 10,
         Callback = Bindable,
-        Button1 = "Посмотреть меню",
+        Button1 = "дай посмотреть блять",
         Button2 = "Отмена"
     })
 
@@ -82,7 +77,6 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local KeyFileName = "MM2HelperKeySave.txt"
 
--- Функция форматирования секунд в формат "ЧЧ:ММ:СС"
 local function FormatTime(seconds)
     local hours = math.floor(seconds / 3600)
     local mins = math.floor((seconds % 3600) / 60)
@@ -126,7 +120,6 @@ local function InitScript()
        }
     })
 
-    -- Переменные
     local RunService = game:GetService("RunService")
     local Camera = workspace.CurrentCamera
     local JoinTime = os.time()
@@ -140,7 +133,6 @@ local function InitScript()
     local JumpPowerValue = 50
     local IsInvisible = false
 
-    -- FOV Circle
     local FOVCircle = Drawing.new("Circle")
     FOVCircle.Thickness = 2
     FOVCircle.NumSides = 60
@@ -149,7 +141,6 @@ local function InitScript()
     FOVCircle.Visible = false
     FOVCircle.Color = Color3.fromRGB(255, 255, 255)
 
-    -- Функция определения ролей
     local function GetPlayerRole(player)
         if not player or not player.Character then return "Innocent" end
         
