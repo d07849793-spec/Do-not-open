@@ -37,7 +37,7 @@ if game.PlaceId ~= MM2_PLACE_ID and not ForceStart then
             local TimerLabel = Instance.new("TextLabel")
             TimerLabel.Size = UDim2.new(0, 300, 0, 80)
             TimerLabel.Position = UDim2.new(0.5, -150, 0.1, 0)
-            TimerLabel.BackgroundTransparency = 1 -- Без фона
+            TimerLabel.BackgroundTransparency = 1
             TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
             TimerLabel.TextSize = 40
             TimerLabel.Font = Enum.Font.SourceSansBold
@@ -58,8 +58,7 @@ if game.PlaceId ~= MM2_PLACE_ID and not ForceStart then
         Text = "Хочешь посмотреть интерфейс?",
         Duration = 10,
         Callback = Bindable,
-        Button1 = "дай посмотреть блять",
-        Button2 = "Отмена"
+        Button1 = "дай посмотреть блять" -- ЕДИНСТВЕННАЯ КНОПКА
     })
 
     local waitTime = 0
