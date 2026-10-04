@@ -1,597 +1,415 @@
--- [[ aimtop v2 | by kupa scripts ]] --
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local StarterGui = game:GetService("StarterGui")
+local CoreGui = game:GetService("CoreGui")
+
+-- Проверка игры (Place ID для Murder Mystery 2: 142823291)
+local MM2_PLACE_ID = 142823291
+local ForceStart = false
+
+if game.PlaceId ~= MM2_PLACE_ID and not ForceStart then
+    StarterGui:SetCore("SendNotification", {
+        Title = "Ошибка MM2 Helper",
+        Text = "придурок зайди в мм2",
+        Duration = 5
+    })
+    
+    local Bindable = Instance.new("BindableFunction")
+    Bindable.OnInvoke = function(response)
+        if response == "Посмотреть меню" then
+            StarterGui:SetCore("SendNotification", {
+                Title = "MM2 Helper",
+                Text = "пон ладно подожди 10 секунд",
+                Duration = 5
+            })
+            
+            local TimerGui = Instance.new("ScreenGui")
+            TimerGui.Name = "MM2HelperTimerGUI"
+            TimerGui.ResetOnSpawn = false
+            
+            pcall(function()
+                TimerGui.Parent = CoreGui
+            end)
+            if not TimerGui.Parent then
+                TimerGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+            end
+            
+            local TimerLabel = Instance.new("TextLabel")
+            TimerLabel.Size = UDim2.new(0, 300, 0, 60)
+            TimerLabel.Position = UDim2.new(0.5, -150, 0.1, 0)
+            TimerLabel.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+            TimerLabel.BorderColor3 = Color3.fromRGB(255, 50, 50)
+            TimerLabel.BorderSizePixel = 2
+            TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            TimerLabel.TextSize = 22
+            TimerLabel.Font = Enum.Font.SourceSansBold
+            TimerLabel.Parent = TimerGui
+            
+            for i = 10, 1, -1 do
+                TimerLabel.Text = "Запуск через: " .. i .. " сек."
+                task.wait(1)
+            end
+            
+            TimerLabel.Text = "Запуск!"
+            task.wait(0.5)
+            TimerGui:Destroy()
+            
+            ForceStart = true
+        end
+    end
+
+    StarterGui:SetCore("SendNotification", {
+        Title = "Запуск в другой игре",
+        Text = "Хочешь посмотреть интерфейс?",
+        Duration = 10,
+        Callback = Bindable,
+        Button1 = "Посмотреть меню",
+        Button2 = "Отмена"
+    })
+
+    local waitTime = 0
+    while not ForceStart and waitTime < 15 do
+        task.wait(0.5)
+        waitTime = waitTime + 0.5
+    end
+
+    if not ForceStart then
+        return
+    end
+end
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
-local Window = Rayfield:CreateWindow({
-   Name = "aimtop pro | Best aim for all games",
-   LoadingTitle = "aimtop",
-   LoadingSubtitle = "by kupa scripts",
-   ConfigurationSaving = {
-      Enabled = false,
-   },
-   KeySystem = true,
-   KeySettings = {
-      Title = "aimtop v2 | Key System",
-      Subtitle = "Aimtop Premium Key System",
-      Note = "buy this key",
-      FileName = "AimtopKey",
-      SaveKey = true,
-      GrabKeyFromSite = false,
-      Key = {"kupa pro", "the premium"}
-   }
-})
+local KeyFileName = "MM2HelperKeySave.txt"
 
--- Service References
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local Camera = workspace.CurrentCamera
-local LocalPlayer = Players.LocalPlayer
-
--- State Variables
-local AimbotEnabled = false
-local SilentAimEnabled = false
-local TargetNPCs = true
-local AimFOV = 150
-local AimPart = "Head"
-local Smoothness = 0.2
-local NoSmoothness = false
-local WallCheck = false
-local TeamCheck = false
-
-local EspEnabled = false
-local EspRainbow = false
-local EspColor = Color3.fromRGB(255, 0, 0)
-
-local FovVisible = false
-local FovRainbow = false
-local FovColor = Color3.fromRGB(255, 255, 255)
-
-local SpeedEnabled = false
-local WalkSpeedValue = 16
-local JumpEnabled = false
-local JumpPowerValue = 50
-
--- Переменные для контроля Snap/Silent Aim
-local OriginalCFrame = nil
-local LockedTarget = nil
-
--- Mobile UI
-local MobileScreenGui = Instance.new("ScreenGui")
-MobileScreenGui.Name = "AimtopMobileUI"
-MobileScreenGui.ResetOnSpawn = false
-if gethui then
-    MobileScreenGui.Parent = gethui()
-elseif syn and syn.protect_gui then
-    syn.protect_gui(MobileScreenGui)
-    MobileScreenGui.Parent = game:GetService("CoreGui")
-else
-    MobileScreenGui.Parent = game:GetService("CoreGui")
+-- Функция форматирования секунд в формат "ЧЧ:ММ:СС"
+local function FormatTime(seconds)
+    local hours = math.floor(seconds / 3600)
+    local mins = math.floor((seconds % 3600) / 60)
+    local secs = math.floor(seconds % 60)
+    return string.format("%02d:%02d:%02d", hours, mins, secs)
 end
 
-local function MakeDraggable(guiObject)
-    local dragging, dragInput, dragStart, startPos
-    guiObject.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = guiObject.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
+local function InitScript()
+    local SavedKey = "mm2bro"
+    
+    if isfile and isfile(KeyFileName) then
+        local content = readfile(KeyFileName)
+        if content and content ~= "" then
+            SavedKey = content
+        end
+    end
+
+    local Window = Rayfield:CreateWindow({
+       Name = "mm2 helper",
+       LoadingTitle = "MM2 Helper Loading...",
+       LoadingSubtitle = "by kupa scripts",
+       ConfigurationSaving = {
+          Enabled = false,
+          FolderName = nil,
+          FileName = "MM2HelperConfig"
+       },
+       Discord = {
+          Enabled = false,
+          Invite = "noinvatelink",
+          RememberJoins = true
+       },
+       KeySystem = true,
+       KeySettings = {
+          Title = "mm2 helper | Key System",
+          Subtitle = "Created by kupa scripts",
+          Note = "Введите ключ доступа (По умолчанию: mm2bro)",
+          FileName = "MM2HelperKeySave",
+          SaveKey = true,
+          GrabKeyFromSite = false,
+          Key = {SavedKey, "mm2bro"}
+       }
+    })
+
+    -- Переменные
+    local RunService = game:GetService("RunService")
+    local Camera = workspace.CurrentCamera
+    local JoinTime = os.time()
+
+    local AimbotEnabled = false
+    local FOVRadius = 100
+    local RainbowFOV = false
+    local ESPOpen = false
+
+    local WalkSpeedValue = 16
+    local JumpPowerValue = 50
+    local IsInvisible = false
+
+    -- FOV Circle
+    local FOVCircle = Drawing.new("Circle")
+    FOVCircle.Thickness = 2
+    FOVCircle.NumSides = 60
+    FOVCircle.Radius = FOVRadius
+    FOVCircle.Filled = false
+    FOVCircle.Visible = false
+    FOVCircle.Color = Color3.fromRGB(255, 255, 255)
+
+    -- Функция определения ролей
+    local function GetPlayerRole(player)
+        if not player or not player.Character then return "Innocent" end
+        
+        if player.Backpack:FindFirstChild("Knife") or player.Character:FindFirstChild("Knife") then
+            return "Murderer"
+        elseif player.Backpack:FindFirstChild("Gun") or player.Character:FindFirstChild("Gun") then
+            return "Sheriff"
+        end
+        
+        return "Innocent"
+    end
+
+    -- Вкладка Main
+    local MainTab = Window:CreateTab("Main", 4483362458)
+
+    MainTab:CreateSection("Aimbot")
+
+    MainTab:CreateToggle({
+       Name = "Аимбот на Мардера",
+       CurrentValue = false,
+       Flag = "AimbotToggle",
+       Callback = function(Value)
+          AimbotEnabled = Value
+          FOVCircle.Visible = Value
+       end,
+    })
+
+    MainTab:CreateSlider({
+       Name = "Размер FOV",
+       Range = {30, 500},
+       Increment = 5,
+       Suffix = "px",
+       CurrentValue = 100,
+       Flag = "FOVSize",
+       Callback = function(Value)
+          FOVRadius = Value
+          FOVCircle.Radius = Value
+       end,
+    })
+
+    MainTab:CreateColorPicker({
+        Name = "Цвет FOV",
+        Color = Color3.fromRGB(255, 255, 255),
+        Flag = "FOVColor",
+        Callback = function(Value)
+            if not RainbowFOV then
+                FOVCircle.Color = Value
+            end
+        end,
+    })
+
+    MainTab:CreateToggle({
+       Name = "Радужный FOV",
+       CurrentValue = false,
+       Flag = "RainbowFOVToggle",
+       Callback = function(Value)
+          RainbowFOV = Value
+       end,
+    })
+
+    MainTab:CreateSection("ESP Ролей")
+
+    local Highlights = {}
+
+    local function ClearESP()
+        for player, highlight in pairs(Highlights) do
+            if highlight then 
+                highlight:Destroy() 
+            end
+        end
+        Highlights = {}
+    end
+
+    MainTab:CreateToggle({
+       Name = "Включить ESP",
+       CurrentValue = false,
+       Flag = "ESPToggle",
+       Callback = function(Value)
+          ESPOpen = Value
+          if not Value then
+              ClearESP()
+          end
+       end,
+    })
+
+    -- Вкладка Player
+    local PlayerTab = Window:CreateTab("Player", 4483362458)
+
+    PlayerTab:CreateSection("Модификации игрока")
+
+    PlayerTab:CreateSlider({
+       Name = "Скорость бега (WalkSpeed)",
+       Range = {16, 120},
+       Increment = 1,
+       Suffix = "spd",
+       CurrentValue = 16,
+       Flag = "WalkSpeedSlider",
+       Callback = function(Value)
+          WalkSpeedValue = Value
+       end,
+    })
+
+    PlayerTab:CreateSlider({
+       Name = "Высота прыжка (JumpPower)",
+       Range = {50, 200},
+       Increment = 1,
+       Suffix = "pwr",
+       CurrentValue = 50,
+       Flag = "JumpPowerSlider",
+       Callback = function(Value)
+          JumpPowerValue = Value
+       end,
+    })
+
+    PlayerTab:CreateSection("Невидимость")
+
+    local function SetInvisibility(state)
+        local char = LocalPlayer.Character
+        if not char then return end
+        
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+
+        if state then
+            local clone = hrp:Clone()
+            clone.Parent = char
+            hrp.Transparency = 1
+            
+            for _, v in pairs(char:GetChildren()) do
+                if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
+                    v.Transparency = 0.5
+                end
+            end
+            
+            task.spawn(function()
+                while IsInvisible and task.wait() do
+                    if char:FindFirstChild("LowerTorso") or char:FindFirstChild("Torso") then
+                        char.PrimaryPart = hrp
+                    end
                 end
             end)
+        else
+            for _, v in pairs(char:GetChildren()) do
+                if v:IsA("BasePart") then
+                    v.Transparency = 0
+                end
+            end
+        end
+    end
+
+    PlayerTab:CreateToggle({
+       Name = "Невидимость (Invisibility)",
+       CurrentValue = false,
+       Flag = "InvisToggle",
+       Callback = function(Value)
+          IsInvisible = Value
+          SetInvisibility(Value)
+       end,
+    })
+
+    -- Вкладка Server Ago
+    local ServerTab = Window:CreateTab("Server Ago", 4483362458)
+
+    ServerTab:CreateSection("Время на сервере")
+
+    local PlayerTimeLabel = ServerTab:CreateLabel("Ваше время на сервере: 00:00:00")
+    local ServerTimeLabel = ServerTab:CreateLabel("Время работы сервера: 00:00:00")
+
+    -- RenderStepped Loop
+    local hue = 0
+    local Connection
+    Connection = RunService.RenderStepped:Connect(function()
+        if not Rayfield then
+            FOVCircle:Remove()
+            Connection:Disconnect()
+            return
+        end
+
+        local playerSecs = os.time() - JoinTime
+        local serverSecs = workspace.DistributedGameTime
+        
+        PlayerTimeLabel:Set("Ваше время на сервере: " .. FormatTime(playerSecs))
+        ServerTimeLabel:Set("Время работы сервера: " .. FormatTime(serverSecs))
+
+        FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+        
+        if RainbowFOV then
+            hue = (hue + 0.005) % 1
+            FOVCircle.Color = Color3.fromHSV(hue, 1, 1)
+        end
+        
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            local hum = LocalPlayer.Character.Humanoid
+            hum.WalkSpeed = WalkSpeedValue
+            hum.UseJumpPower = true
+            hum.JumpPower = JumpPowerValue
+        end
+
+        if AimbotEnabled then
+            local target = nil
+            local shortestDist = FOVRadius
+            
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                    if GetPlayerRole(plr) == "Murderer" then
+                        local pos, onScreen = Camera:WorldToViewportPoint(plr.Character.HumanoidRootPart.Position)
+                        if onScreen then
+                            local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+                            local dist = (Vector2.new(pos.X, pos.Y) - screenCenter).Magnitude
+                            
+                            if dist < shortestDist then
+                                shortestDist = dist
+                                target = plr
+                            end
+                        end
+                    end
+                end
+            end
+            
+            if target and target.Character and target.Character:FindFirstChild("Head") then
+                Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Character.Head.Position)
+            end
+        end
+        
+        if ESPOpen then
+            for plr, hl in pairs(Highlights) do
+                if not plr or not plr.Parent or not plr.Character or not hl.Parent or hl.Parent ~= plr.Character then
+                    if hl then hl:Destroy() end
+                    Highlights[plr] = nil
+                end
+            end
+
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
+                    local role = GetPlayerRole(plr)
+                    local color = Color3.fromRGB(0, 255, 0)
+                    
+                    if role == "Murderer" then
+                        color = Color3.fromRGB(255, 0, 0)
+                    elseif role == "Sheriff" then
+                        color = Color3.fromRGB(0, 100, 255)
+                    end
+                    
+                    local hl = Highlights[plr]
+                    if not hl or not hl.Parent or hl.Parent ~= plr.Character then
+                        hl = Instance.new("Highlight")
+                        hl.Name = "RoleESP"
+                        hl.FillTransparency = 0.5
+                        hl.OutlineTransparency = 0
+                        hl.Parent = plr.Character
+                        Highlights[plr] = hl
+                    end
+                    
+                    hl.FillColor = color
+                    hl.OutlineColor = color
+                end
+            end
         end
     end)
-    guiObject.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - dragStart
-            guiObject.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
 end
 
-local function CreateRayfieldButton(name, text, defaultPos)
-    local frame = Instance.new("TextButton")
-    frame.Name = name
-    frame.Size = UDim2.new(0, 75, 0, 75)
-    frame.Position = defaultPos
-    frame.BackgroundColor3 = Color3.fromRGB(28, 28, 36)
-    frame.AutoButtonColor = false
-    frame.Text = ""
-    frame.Visible = false
-    frame.Parent = MobileScreenGui
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 16)
-    corner.Parent = frame
-
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(44, 44, 56)
-    stroke.Thickness = 2
-    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    stroke.Parent = frame
-
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, 0, 0.6, 0)
-    label.Position = UDim2.new(0, 0, 0.1, 0)
-    label.BackgroundTransparency = 1
-    label.Text = text
-    label.TextColor3 = Color3.fromRGB(240, 240, 240)
-    label.TextSize = 14
-    label.Font = Enum.Font.GothamBold
-    label.Parent = frame
-
-    local indicator = Instance.new("Frame")
-    indicator.Size = UDim2.new(0, 24, 0, 8)
-    indicator.Position = UDim2.new(0.5, -12, 0.72, 0)
-    indicator.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
-    indicator.Parent = frame
-
-    local indCorner = Instance.new("UICorner")
-    indCorner.CornerRadius = UDim.new(1, 0)
-    indCorner.Parent = indicator
-
-    MakeDraggable(frame)
-    return frame, indicator, stroke
-end
-
-local AimBtnFrame, AimBtnInd, AimBtnStroke = CreateRayfieldButton("AimButton", "AIM", UDim2.new(0.8, 0, 0.35, 0))
-local WallBtnFrame, WallBtnInd, WallBtnStroke = CreateRayfieldButton("WallButton", "WALL", UDim2.new(0.8, 0, 0.48, 0))
-
-local function UpdateButtonState(frame, indicator, stroke, state)
-    if state then
-        indicator.BackgroundColor3 = Color3.fromRGB(60, 220, 100)
-        stroke.Color = Color3.fromRGB(60, 220, 100)
-    else
-        indicator.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
-        stroke.Color = Color3.fromRGB(44, 44, 56)
-    end
-end
-
--- FOV Circle Object
-local FOVCircle = Drawing.new("Circle")
-FOVCircle.Thickness = 1.5
-FOVCircle.NumSides = 60
-FOVCircle.Radius = AimFOV
-FOVCircle.Filled = false
-FOVCircle.Visible = false
-
-local Highlights = {}
-
--- Tabs
-local MainTab = Window:CreateTab("Aimbot", 4483362458)
-local VisualsTab = Window:CreateTab("ESP & Visuals", 4483362458)
-local MovementTab = Window:CreateTab("Movement", 4483362458)
-
--- ================= AIMBOT TAB =================
-local AimToggle = MainTab:CreateToggle({
-   Name = "Enable Aimbot",
-   CurrentValue = false,
-   Callback = function(Value)
-      AimbotEnabled = Value
-      if not Value and OriginalCFrame then
-         Camera.CFrame = OriginalCFrame
-         OriginalCFrame = nil
-         LockedTarget = nil
-      end
-      UpdateButtonState(AimBtnFrame, AimBtnInd, AimBtnStroke, Value)
-   end,
-})
-
-MainTab:CreateToggle({
-   Name = "Silent/Snap Aim (Авто-возврат взгляда)",
-   CurrentValue = false,
-   Callback = function(Value)
-      SilentAimEnabled = Value
-      if not Value and OriginalCFrame then
-         Camera.CFrame = OriginalCFrame
-         OriginalCFrame = nil
-         LockedTarget = nil
-      end
-   end,
-})
-
-MainTab:CreateToggle({
-   Name = "Target NPCs (Детектить ботов)",
-   CurrentValue = true,
-   Callback = function(Value)
-      TargetNPCs = Value
-   end,
-})
-
-local WallToggle = MainTab:CreateToggle({
-   Name = "Wall Check (Проверка стен)",
-   CurrentValue = false,
-   Callback = function(Value)
-      WallCheck = Value
-      UpdateButtonState(WallBtnFrame, WallBtnInd, WallBtnStroke, Value)
-   end,
-})
-
-MainTab:CreateToggle({
-   Name = "Team Check (Проверка команд)",
-   CurrentValue = false,
-   Callback = function(Value)
-      TeamCheck = Value
-   end,
-})
-
-MainTab:CreateToggle({
-   Name = "Add Aim Button",
-   CurrentValue = false,
-   Callback = function(Value)
-      AimBtnFrame.Visible = Value
-   end,
-})
-
-MainTab:CreateToggle({
-   Name = "Add Wall Check Button",
-   CurrentValue = false,
-   Callback = function(Value)
-      WallBtnFrame.Visible = Value
-   end,
-})
-
-MainTab:CreateToggle({
-   Name = "No плавность (Мгновенный аим)",
-   CurrentValue = false,
-   Callback = function(Value)
-      NoSmoothness = Value
-   end,
-})
-
-MainTab:CreateDropdown({
-   Name = "Aim Target Part",
-   Options = {"Head", "HumanoidRootPart"},
-   CurrentOption = "Head",
-   Callback = function(Option)
-      AimPart = type(Option) == "table" and Option[1] or Option
-   end,
-})
-
-MainTab:CreateSlider({
-   Name = "Aimbot FOV",
-   Range = {30, 500},
-   Increment = 5,
-   Suffix = "px",
-   CurrentValue = 150,
-   Callback = function(Value)
-      AimFOV = Value
-      FOVCircle.Radius = Value
-   end,
-})
-
-MainTab:CreateSlider({
-   Name = "Smoothness (Плавность)",
-   Range = {0.05, 1},
-   Increment = 0.05,
-   CurrentValue = 0.2,
-   Callback = function(Value)
-      Smoothness = Value
-   end,
-})
-
-AimBtnFrame.MouseButton1Click:Connect(function()
-   AimToggle:Set(not AimbotEnabled)
-end)
-
-WallBtnFrame.MouseButton1Click:Connect(function()
-   WallToggle:Set(not WallCheck)
-end)
-
--- ================= VISUALS TAB =================
-VisualsTab:CreateSection("ESP Options")
-
-VisualsTab:CreateToggle({
-   Name = "Enable ESP",
-   CurrentValue = false,
-   Callback = function(Value)
-      EspEnabled = Value
-      if not Value then
-         for _, highlight in pairs(Highlights) do
-            if typeof(highlight) == "Instance" then
-               highlight:Destroy()
-            end
-         end
-         Highlights = {}
-      end
-   end,
-})
-
-VisualsTab:CreateColorPicker({
-    Name = "ESP Color",
-    Color = Color3.fromRGB(255, 0, 0),
-    Callback = function(Value)
-        EspColor = Value
-    end
-})
-
-VisualsTab:CreateToggle({
-   Name = "ESP Rainbow Mode",
-   CurrentValue = false,
-   Callback = function(Value)
-      EspRainbow = Value
-   end,
-})
-
-VisualsTab:CreateSection("FOV Circle Options")
-
-VisualsTab:CreateToggle({
-   Name = "Show FOV Circle",
-   CurrentValue = false,
-   Callback = function(Value)
-      FovVisible = Value
-      FOVCircle.Visible = Value
-   end,
-})
-
-VisualsTab:CreateColorPicker({
-    Name = "FOV Circle Color",
-    Color = Color3.fromRGB(255, 255, 255),
-    Callback = function(Value)
-        FovColor = Value
-        FOVCircle.Color = Value
-    end
-})
-
-VisualsTab:CreateToggle({
-   Name = "FOV Rainbow Mode",
-   CurrentValue = false,
-   Callback = function(Value)
-      FovRainbow = Value
-   end,
-})
-
--- ================= MOVEMENT TAB =================
-MovementTab:CreateToggle({
-   Name = "Enable Custom Speed",
-   CurrentValue = false,
-   Callback = function(Value)
-      SpeedEnabled = Value
-      if not Value and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-         LocalPlayer.Character.Humanoid.WalkSpeed = 16
-      end
-   end,
-})
-
-MovementTab:CreateSlider({
-   Name = "WalkSpeed",
-   Range = {16, 200},
-   Increment = 1,
-   CurrentValue = 16,
-   Callback = function(Value)
-      WalkSpeedValue = Value
-   end,
-})
-
-MovementTab:CreateToggle({
-   Name = "Enable Custom Jump",
-   CurrentValue = false,
-   Callback = function(Value)
-      JumpEnabled = Value
-      if not Value and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-         LocalPlayer.Character.Humanoid.JumpPower = 50
-      end
-   end,
-})
-
-MovementTab:CreateSlider({
-   Name = "JumpPower",
-   Range = {50, 300},
-   Increment = 5,
-   CurrentValue = 50,
-   Callback = function(Value)
-      JumpPowerValue = Value
-   end,
-})
-
--- ================= LOGIC & LOOPS =================
-
-local function IsVisible(targetPart)
-   if not WallCheck then return true end
-   local origin = Camera.CFrame.Position
-   local destination = targetPart.Position
-   local raycastParams = RaycastParams.new()
-   raycastParams.FilterType = RaycastFilterType.Exclude
-   raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
-   raycastParams.IgnoreWater = true
-   
-   local result = workspace:Raycast(origin, destination - origin, raycastParams)
-   if result then
-      return result.Instance:IsDescendantOf(targetPart.Parent)
-   end
-   return true
-end
-
-local function IsValidTarget(model)
-   if not model or not model:IsA("Model") or model == LocalPlayer.Character then return false end
-
-   local humanoid = model:FindFirstChildOfClass("Humanoid")
-   local targetPart = model:FindFirstChild(AimPart) or model:FindFirstChild("HumanoidRootPart")
-   
-   if not humanoid or humanoid.Health <= 0 or not targetPart then
-      return false
-   end
-
-   local player = Players:GetPlayerFromCharacter(model)
-   if player then
-      if TeamCheck and player.Team == LocalPlayer.Team then
-         return false
-      end
-   else
-      if not TargetNPCs then
-         return false
-      end
-   end
-
-   return true, targetPart
-end
-
-local function GetClosestTarget()
-   local closestTargetPart = nil
-   local shortestDistance = AimFOV
-   local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-
-   -- Сканируем игроков
-   for _, player in pairs(Players:GetPlayers()) do
-      if player ~= LocalPlayer and player.Character then
-         local valid, part = IsValidTarget(player.Character)
-         if valid then
-            local partPos, onScreen = Camera:WorldToViewportPoint(part.Position)
-            if onScreen and IsVisible(part) then
-               local distance = (Vector2.new(partPos.X, partPos.Y) - screenCenter).Magnitude
-               if distance < shortestDistance then
-                  closestTargetPart = part
-                  shortestDistance = distance
-               end
-            end
-         end
-      end
-   end
-
-   -- Сканируем ботов в Workspace
-   if TargetNPCs then
-      for _, obj in pairs(workspace:GetChildren()) do
-         if obj:IsA("Model") and not Players:GetPlayerFromCharacter(obj) then
-            local valid, part = IsValidTarget(obj)
-            if valid then
-               local partPos, onScreen = Camera:WorldToViewportPoint(part.Position)
-               if onScreen and IsVisible(part) then
-                  local distance = (Vector2.new(partPos.X, partPos.Y) - screenCenter).Magnitude
-                  if distance < shortestDistance then
-                     closestTargetPart = part
-                     shortestDistance = distance
-                  end
-               end
-            end
-         end
-      end
-   end
-
-   return closestTargetPart
-end
-
--- Основной цикл
-RunService.RenderStepped:Connect(function()
-   local hue = (tick() % 5) / 5
-   local rainbowColor = Color3.fromHSV(hue, 1, 1)
-
-   if FovRainbow then
-      FOVCircle.Color = rainbowColor
-   else
-      FOVCircle.Color = FovColor
-   end
-
-   FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-
-   -- Логика Snap / Silent Aim
-   if AimbotEnabled then
-      local targetPart = GetClosestTarget()
-      
-      if targetPart then
-         -- Проверяем, жив ли текущий target
-         local parentModel = targetPart.Parent
-         local hum = parentModel and parentModel:FindFirstChildOfClass("Humanoid")
-         
-         if hum and hum.Health > 0 then
-            -- Если только захватили цель при Silent Aim, запоминаем положение
-            if SilentAimEnabled and not LockedTarget then
-               OriginalCFrame = Camera.CFrame
-               LockedTarget = targetPart
-            end
-
-            local targetCFrame = CFrame.new(Camera.CFrame.Position, targetPart.Position)
-            local currentSmoothness = (NoSmoothness or SilentAimEnabled) and 1 or Smoothness
-            Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, currentSmoothness)
-         else
-            -- Если цель умерла
-            if SilentAimEnabled and OriginalCFrame then
-               Camera.CFrame = OriginalCFrame
-               OriginalCFrame = nil
-               LockedTarget = nil
-            end
-         end
-      else
-         -- Цель вышла из FOV или умерла
-         if SilentAimEnabled and OriginalCFrame then
-            Camera.CFrame = OriginalCFrame
-            OriginalCFrame = nil
-            LockedTarget = nil
-         end
-      end
-   else
-      if OriginalCFrame then
-         OriginalCFrame = nil
-         LockedTarget = nil
-      end
-   end
-
-   -- ESP Логика
-   if EspEnabled then
-      local activeColor = EspRainbow and rainbowColor or EspColor
-
-      local function ApplyHighlight(model)
-         local highlight = Highlights[model]
-         if not highlight or highlight.Parent ~= model then
-            if highlight and typeof(highlight) == "Instance" then highlight:Destroy() end
-            highlight = Instance.new("Highlight")
-            highlight.Adornee = model
-            highlight.FillTransparency = 0.5
-            highlight.OutlineTransparency = 0
-            highlight.Parent = model
-            Highlights[model] = highlight
-         end
-         highlight.FillColor = activeColor
-         highlight.OutlineColor = activeColor
-      end
-
-      for _, player in pairs(Players:GetPlayers()) do
-         if player ~= LocalPlayer and player.Character then
-            local valid = IsValidTarget(player.Character)
-            if valid then
-               ApplyHighlight(player.Character)
-            elseif Highlights[player.Character] then
-               Highlights[player.Character]:Destroy()
-               Highlights[player.Character] = nil
-            end
-         end
-      end
-
-      if TargetNPCs then
-         for _, obj in pairs(workspace:GetChildren()) do
-            if obj:IsA("Model") and not Players:GetPlayerFromCharacter(obj) then
-               local valid = IsValidTarget(obj)
-               if valid then
-                  ApplyHighlight(obj)
-               elseif Highlights[obj] then
-                  Highlights[obj]:Destroy()
-                  Highlights[obj] = nil
-               end
-            end
-         end
-      end
-   end
-
-   -- Скорость и Прыжок
-   if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-      if SpeedEnabled then
-         LocalPlayer.Character.Humanoid.WalkSpeed = WalkSpeedValue
-      end
-      if JumpEnabled then
-         LocalPlayer.Character.Humanoid.JumpPower = JumpPowerValue
-      end
-   end
-end)
-
-Players.PlayerRemoving:Connect(function(player)
-   if player.Character and Highlights[player.Character] then
-      Highlights[player.Character]:Destroy()
-      Highlights[player.Character] = nil
-   end
-end)
+-- Запуск скрипта
+InitScript()
